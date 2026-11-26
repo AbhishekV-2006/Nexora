@@ -21,7 +21,7 @@ const Header = () => {
         <nav className="flex items-center gap-2 text-sm text-slate-300 sm:gap-4">
           <Link to="/projects" className="rounded-full px-3 py-2 transition hover:bg-slate-800 hover:text-white">Projects</Link>
           <Link to="/messages" className="rounded-full px-3 py-2 transition hover:bg-slate-800 hover:text-white">Messages</Link>
-          <Link to="/payments" className="rounded-full px-3 py-2 transition hover:bg-slate-800 hover:text-white">Escrow</Link>
+          <Link to="/payments" className="rounded-full px-3 py-2 transition hover:bg-slate-800 hover:text-white">Payments</Link>
           {isAuthenticated() ? (
             <div className="flex items-center gap-2">
               <Link to="/profile/edit" className="rounded-full bg-indigo-600 px-3 py-2 font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500">Edit Profile</Link>

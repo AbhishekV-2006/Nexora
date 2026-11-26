@@ -29,6 +29,7 @@ import JobListPage from "./pages/JobListPage";
 import PostJob from "./pages/PostJob";
 import JobDetailPage from "./pages/JobDetailPage";
 import MessagesPage from "./pages/MessagesPage";
+import PaymentsPage from "./pages/PaymentsPage";
 
 /**
  * Protected Route Wrapper
@@ -92,9 +93,7 @@ function App() {
               path="/payments"
               element={
                 <ProtectedRoute>
-                  <div className="min-h-screen flex items-center justify-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Escrow Payments - Coming Soon</h1>
-                  </div>
+                  <PaymentsPage />
                 </ProtectedRoute>
               }
             />

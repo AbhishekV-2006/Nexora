@@ -24,7 +24,7 @@ export const HomePage = () => {
               Hire elite talent. Build with confidence.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-              Nexora brings together founders, clients, and top-tier freelancers in one refined space with secure workflows and beautiful collaboration.
+              Nexora brings together clients and freelancers with job offers, live collaboration, and demo payment tracking.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <button className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-[1.02]">
@@ -39,7 +39,7 @@ export const HomePage = () => {
           <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-inner shadow-black/20">
             <h2 className="text-2xl font-semibold text-white">Why teams choose Nexora</h2>
             <ul className="mt-6 space-y-4 text-slate-300">
-              <li className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">✅ Secure escrow and transparent payments</li>
+              <li className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">✅ Job offers, acceptance, and simulated payment receipts</li>
               <li className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">✅ Real-time collaboration and messaging</li>
               <li className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">✅ Role-aware dashboards for clients and freelancers</li>
               <li className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">✅ Premium profile pages with trust signals and portfolios</li>

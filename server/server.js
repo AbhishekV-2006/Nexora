@@ -43,6 +43,9 @@ import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import offerRoutes from "./routes/offerRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 import { attachSocketServer } from "./realtime/socketServer.js";
 
 // Load environment variables from .env file
@@ -95,6 +98,9 @@ app.use('/api/users', userRoutes);
 
 // Mount job routes
 app.use('/api/jobs', jobRoutes);
+app.use('/api/offers', offerRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Placeholder routes for future features
 // TODO: Add these routes as we build features
@@ -103,10 +109,6 @@ app.use("/api/projects", (req, res) => {
 });
 
 app.use("/api/messages", messageRoutes);
-
-app.use("/api/payments", (req, res) => {
-  res.json({ message: "Escrow Payments API - Coming soon" });
-});
 
 // Unknown API paths should remain JSON, not fall through to the SPA shell.
 app.use("/api", (req, res) => {

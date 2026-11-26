@@ -2,6 +2,8 @@
 
 Nexora is a React/Vite freelancer marketplace with an Express API, MongoDB persistence, and Socket.IO WebSocket chat. In production, the Express service serves both the API and the built single-page app.
 
+Clients can review offers on their posted jobs, accept one offer, record a simulated payment, complete the job, and review the freelancer. Freelancers can submit one offer per job and review the client after completion. Demo payments only update Nexora's database; no money is charged or transferred.
+
 ## Deploy the whole app to Render
 
 1. Push this repository to GitHub.

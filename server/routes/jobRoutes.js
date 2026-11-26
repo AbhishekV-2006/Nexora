@@ -1,7 +1,7 @@
 import express from 'express';
 import authenticateToken from '../middleware/authMiddleware.js';
 import { ensureRole } from '../middleware/roleMiddleware.js';
-import { createJob, listJobs, getJobById, updateJob, deleteJob } from '../controllers/jobController.js';
+import { createJob, listJobs, listMyJobs, getJobById, updateJob, deleteJob, completeJob } from '../controllers/jobController.js';
 
 const router = express.Router();
 
@@ -10,6 +10,10 @@ router.post('/', authenticateToken, ensureRole('client'), createJob);
 
 // GET /api/jobs - list with filters and pagination
 router.get('/', listJobs);
+
+// GET /api/jobs/mine - authenticated client's own jobs
+router.get('/mine', authenticateToken, ensureRole('client'), listMyJobs);
+router.post('/:id/complete', authenticateToken, ensureRole('client'), completeJob);
 
 // GET /api/jobs/:id - single job with populated client
 router.get('/:id', getJobById);

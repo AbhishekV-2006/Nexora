@@ -1,5 +1,6 @@
 import Job from '../models/Job.js';
 import User from '../models/User.js';
+import VirtualPayment from '../models/VirtualPayment.js';
 
 /**
  * Create a new job (client only)
@@ -71,13 +72,39 @@ export const listJobs = async (req, res, next) => {
   }
 };
 
+export const listMyJobs = async (req, res, next) => {
+  try {
+    const jobs = await Job.find({ clientId: req.user.userId }).sort({ createdAt: -1 })
+      .populate("freelancerId", "name role profileImage").lean();
+    return res.json({ jobs });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const completeJob = async (req, res, next) => {
+  try {
+    const job = await Job.findOne({ _id: req.params.id, clientId: req.user.userId });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.status !== 'in-progress') return res.status(409).json({ error: 'Only an active job can be completed' });
+    if (!await VirtualPayment.exists({ job: job._id })) return res.status(409).json({ error: 'Record the simulated payment before completing this job' });
+    job.status = 'completed';
+    await job.save();
+    return res.json({ job });
+  } catch (err) {
+    next(err);
+  }
+};
+
 /**
  * Get single job, populate client data
  */
 export const getJobById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const job = await Job.findById(id).populate({ path: 'clientId', select: '-password' }).lean();
+    const job = await Job.findById(id)
+      .populate({ path: 'clientId', select: '-password' })
+      .populate({ path: 'freelancerId', select: 'name role profileImage' }).lean();
     if (!job) return res.status(404).json({ error: 'Job not found' });
     return res.json({ job });
   } catch (err) {
@@ -97,7 +124,7 @@ export const updateJob = async (req, res, next) => {
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (job.clientId.toString() !== userId) return res.status(403).json({ error: 'Only owner can update job' });
 
-    const updatable = ['title','description','requiredSkills','budget','budgetType','deadline','status','category','tags'];
+    const updatable = ['title','description','requiredSkills','budget','budgetType','deadline','category','tags'];
     updatable.forEach(f => {
       if (req.body[f] !== undefined) job[f] = req.body[f];
     });
@@ -124,6 +151,7 @@ export const deleteJob = async (req, res, next) => {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (job.clientId.toString() !== userId) return res.status(403).json({ error: 'Only owner can cancel job' });
+    if (job.status !== 'open') return res.status(409).json({ error: 'Only an open job can be cancelled' });
 
     job.status = 'cancelled';
     await job.save();

@@ -69,6 +69,15 @@ export const ApiProvider = ({ children }) => {
   getJob: (id) => apiClient.get(`/jobs/${id}`),
   updateJob: (id, data) => apiClient.put(`/jobs/${id}`, data),
   deleteJob: (id) => apiClient.delete(`/jobs/${id}`),
+  getMyJobs: () => apiClient.get('/jobs/mine'),
+  completeJob: (id) => apiClient.post(`/jobs/${id}/complete`),
+
+    // Offers
+    submitOffer: (jobId, data) => apiClient.post(`/offers/job/${jobId}`, data),
+    getJobOffers: (jobId) => apiClient.get(`/offers/job/${jobId}`),
+    getMyOffers: () => apiClient.get('/offers/mine'),
+    acceptOffer: (jobId, offerId) => apiClient.post(`/offers/job/${jobId}/${offerId}/accept`),
+    rejectOffer: (jobId, offerId) => apiClient.post(`/offers/job/${jobId}/${offerId}/reject`),
 
     // Messaging endpoints (placeholder)
     getConversations: () => apiClient.get("/messages"),
@@ -77,8 +86,11 @@ export const ApiProvider = ({ children }) => {
     sendMessage: (conversationId, content) => apiClient.post(`/messages/${conversationId}`, { content }),
 
     // Payments endpoints (placeholder)
-    getEscrowTransactions: () => apiClient.get("/payments"),
-    initiatePayment: (data) => apiClient.post("/payments", data),
+    getEscrowTransactions: () => apiClient.get('/payments/mine'),
+    simulatePayment: (jobId) => apiClient.post(`/payments/jobs/${jobId}/simulate`),
+    getJobReviews: (jobId) => apiClient.get(`/reviews/job/${jobId}`),
+    getUserReviews: (userId) => apiClient.get(`/reviews/user/${userId}`),
+    submitReview: (jobId, data) => apiClient.post(`/reviews/job/${jobId}`, data),
   };
 
   return (

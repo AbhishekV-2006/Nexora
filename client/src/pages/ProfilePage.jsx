@@ -10,6 +10,7 @@ export const ProfilePage = () => {
   const { id } = useParams();
   const api = useApi();
   const [user, setUser] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const API_BASE = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : (import.meta.env.DEV ? 'http://localhost:5001' : '');
   const { user: currentUser } = useAuth();
@@ -28,6 +29,15 @@ export const ProfilePage = () => {
     fetch();
   }, [id]);
 
+  useEffect(() => {
+    if (!user?._id) return;
+    let cancelled = false;
+    api.getUserReviews(user._id).then((res) => {
+      if (!cancelled) setReviews(res.data.reviews || []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [api, user?._id]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-transparent text-slate-200">Loading profile...</div>;
   if (!user) return <div className="min-h-screen flex items-center justify-center bg-transparent text-slate-200">User not found</div>;
 
@@ -39,14 +49,14 @@ export const ProfilePage = () => {
   const statCards = isFreelancer
     ? [
         { label: 'Projects Completed', value: user.projectsCompleted || user.completedProjects || 0 },
-        { label: 'Average Rating', value: user.averageRating || '—' },
+        { label: 'Average Rating', value: reviews.length ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1) : '—' },
         { label: 'Success Rate', value: user.successRate || '—' },
       ]
     : [
         { label: 'Jobs Posted', value: user.jobsPosted || 0 },
         { label: 'Freelancers Hired', value: user.freelancersHired || 0 },
         { label: 'Total Spent', value: user.totalSpent ? `₹${Number(user.totalSpent).toLocaleString('en-IN')}` : '—' },
-        { label: 'Average Rating Given', value: user.averageRatingGiven || '—' },
+        { label: 'Average Rating Received', value: reviews.length ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1) : '—' },
       ];
 
   return (
@@ -106,6 +116,14 @@ export const ProfilePage = () => {
 
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-6">
+            <section className="rounded-[28px] border border-white/10 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
+              <h2 className="text-xl font-semibold text-white">Reviews</h2>
+              <div className="mt-5 space-y-3">
+                {reviews.map((review) => <article key={review._id} className="rounded-2xl border border-white/10 bg-slate-800/60 p-4"><div className="flex items-center justify-between gap-2"><p className="font-semibold text-white">{review.reviewer?.name || 'Nexora member'}</p><span className="text-amber-300">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span></div><p className="mt-2 text-sm text-slate-300">{review.comment}</p><p className="mt-2 text-xs text-slate-500">{review.job?.title || 'Completed job'}</p></article>)}
+                {!reviews.length && <p className="text-sm text-slate-400">No reviews yet.</p>}
+              </div>
+            </section>
+
             <section className="rounded-[28px] border border-white/10 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-white">Bio / About Me</h2>

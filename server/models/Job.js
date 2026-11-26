@@ -27,6 +27,8 @@ const jobSchema = new mongoose.Schema(
     deadline: { type: Date, default: null },
     status: { type: String, enum: ['open', 'in-progress', 'completed', 'cancelled'], default: 'open' },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    acceptedOfferId: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
     category: { type: String, default: '' },
     tags: { type: [String], default: [] },
   },
