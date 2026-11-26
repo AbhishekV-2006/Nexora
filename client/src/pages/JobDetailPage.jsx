@@ -10,7 +10,7 @@ export const JobDetailPage = () => {
   const api = useApi();
   const [job,setJob] = useState(null);
   const { user } = useAuth();
-  const apiOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
+  const apiOrigin = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5001/api' : '/api')).replace(/\/api\/?$/, '');
 
   useEffect(()=>{
     const load = async () => {

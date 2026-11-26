@@ -28,6 +28,8 @@
  */
 
 import express from "express";
+import fs from "fs";
+import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from 'url';
 
@@ -41,6 +43,7 @@ import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import { attachSocketServer } from "./realtime/socketServer.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -53,18 +56,17 @@ const app = express();
 const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
   .split(",").map((origin) => origin.trim()).filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-      const error = new Error("Origin is not allowed by CORS");
-      error.status = 403;
-      return callback(error);
-    },
-    credentials: true,
-    optionsSuccessStatus: 200,
-  })
-);
+app.use(cors((req, callback) => {
+  const origin = req.get("Origin");
+  let sameOrigin = false;
+  try { sameOrigin = Boolean(origin) && new URL(origin).host === req.get("host"); } catch {}
+  if (!origin || sameOrigin || allowedOrigins.includes(origin)) {
+    return callback(null, { origin: origin ? true : false, credentials: true, optionsSuccessStatus: 200 });
+  }
+  const error = new Error("Origin is not allowed by CORS");
+  error.status = 403;
+  return callback(error);
+}));
 
 // Middleware: Parse JSON request bodies
 // Converts incoming JSON strings to JavaScript objects
@@ -106,13 +108,24 @@ app.use("/api/payments", (req, res) => {
   res.json({ message: "Escrow Payments API - Coming soon" });
 });
 
-// 404 Handler for undefined routes
-app.use((req, res) => {
+// Unknown API paths should remain JSON, not fall through to the SPA shell.
+app.use("/api", (req, res) => {
   res.status(404).json({
     success: false,
     error: "Route not found",
     path: req.path,
   });
+});
+
+const clientDist = path.resolve(__dirname, "../client/dist");
+const clientIndex = path.join(clientDist, "index.html");
+if (fs.existsSync(clientIndex)) {
+  app.use(express.static(clientDist));
+  app.get("*", (req, res) => res.sendFile(clientIndex));
+}
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, error: "Route not found", path: req.path });
 });
 
 // Global error handling middleware (must be last)
@@ -130,7 +143,9 @@ const startServer = async () => {
     await connectDB();
 
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, "0.0.0.0", () => {
+    const httpServer = createServer(app);
+    attachSocketServer(httpServer, allowedOrigins);
+    httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Nexora Server running on port ${PORT}`);
       console.log(`📍 API Health: http://localhost:${PORT}/api/health`);
       console.log(`🔐 Environment: ${process.env.NODE_ENV || "development"}`);

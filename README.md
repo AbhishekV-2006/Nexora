@@ -1,20 +1,37 @@
 # Nexora
 
-Nexora is a freelancer marketplace with a React and Vite frontend and an
-Express API backed by MongoDB.
+Nexora is a React/Vite freelancer marketplace with an Express API, MongoDB persistence, and Socket.IO WebSocket chat. In production, the Express service serves both the API and the built single-page app.
 
-## Requirements
+## Deploy the whole app to Render
 
-- Node.js 20 or newer
-- MongoDB, either local or hosted (for example, MongoDB Atlas)
+1. Push this repository to GitHub.
+2. In Render, create a **Blueprint** from the repository. Render reads [`render.yaml`](render.yaml) and creates one web service named `nexora`.
+3. When prompted, provide `MONGO_URI` for a MongoDB database reachable from Render. The Blueprint generates a `JWT_SECRET` for you.
+4. Deploy. The build installs both lockfiles, builds the Vite client, then starts Express. The app and API share one Render URL; SPA routes such as `/messages` also load on refresh.
+
+Render web services support inbound WebSocket connections. The app uses authenticated Socket.IO WebSocket transport for live messages. See [Render WebSockets](https://render.com/docs/websocket) and the [Blueprint specification](https://render.com/docs/blueprint-spec).
+
+The free service uses ephemeral local storage, so uploaded avatars may disappear when the service restarts or redeploys. If persistent avatars matter, move storage to a persistent disk or object store.
+
+## Environment variables
+
+| Variable | Used by | Required | Purpose |
+| --- | --- | --- | --- |
+| `MONGO_URI` | Server | Yes | MongoDB connection string |
+| `JWT_SECRET` | Server | Yes | Private token signing secret (Render can generate this) |
+| `CLIENT_URL` | Server | No | Additional allowed browser origins; same-origin production is permitted automatically (local default is Vite at port `5173`) |
+| `PORT` | Server | Host supplied | Port for Express and WebSockets |
+| `NODE_ENV` | Server | Recommended | Set to `production` on Render |
+| `UPLOAD_DIR` | Server | No | Avatar directory; point this at persistent storage if configured |
+| `VITE_API_URL` | Client build | No | Leave unset for same-origin `/api`; use full `https://api-host/api` only if splitting services |
+
+Do not commit `.env` files or put server secrets in `VITE_*` values. Vite variables are public in the browser bundle.
 
 ## Run locally
 
-Create `server/.env` with `MONGO_URI` and a private `JWT_SECRET` of at least
-32 characters. Create `client/.env` and set `VITE_API_URL` if you want to
-override the default API URL (`http://localhost:5001/api`).
+Requirements: Node.js 20 or newer and MongoDB (local or hosted). Copy [server/.env.example](server/.env.example) to `server/.env` and set `MONGO_URI` plus a random `JWT_SECRET` of at least 32 characters. [client/.env.example](client/.env.example) can be copied to `client/.env`; the API URL is optional.
 
-Start the API in one terminal:
+Start each service in a terminal:
 
 ```powershell
 cd server
@@ -22,66 +39,14 @@ npm ci
 npm run dev
 ```
 
-Start the frontend in another terminal:
-
 ```powershell
 cd client
 npm ci
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The API health check is
-available at [http://localhost:5001/api/health](http://localhost:5001/api/health).
+Open `http://localhost:5173`. The Vite dev server proxies `/api` to the backend on port `5001`. The API health endpoint is `http://localhost:5001/api/health`.
 
-## Production deployment
+## Chat
 
-Deploy the API and frontend as separate services, and use a managed MongoDB
-database for production.
-
-### API service
-
-- **Root directory:** `server`
-- **Install:** `npm ci`
-- **Start:** `npm start`
-- **Health check:** `/api/health`
-- **Environment:** Set `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, and
-  `CLIENT_URL` in the hosting provider's environment settings.
-- `CLIENT_URL` must be the frontend origin without a path. Separate multiple
-  origins with commas.
-- If avatars need to persist across deployments, mount persistent storage and
-  set `UPLOAD_DIR` to its path. The default `server/uploads` directory may be
-  ephemeral on hosted services.
-
-### Frontend static service
-
-- **Root directory:** `client`
-- **Install:** `npm ci`
-- **Build:** `npm run build`
-- **Publish directory:** `dist`
-- Set `VITE_API_URL` to the deployed API origin ending in `/api`, for example
-  `https://api.example.com/api`. This value is embedded at build time, so
-  rebuild after changing it.
-- Configure the host to serve `index.html` for unknown routes so routes such
-  as `/messages` work when refreshed.
-
-### Environment variables
-
-| Variable | Used by | Required | Purpose |
-| --- | --- | --- | --- |
-| `MONGO_URI` | API | Yes | MongoDB connection string |
-| `JWT_SECRET` | API | Yes | Private token-signing secret, at least 32 characters |
-| `CLIENT_URL` | API | Production | Allowed frontend origin or comma-separated origins |
-| `PORT` | API | No | Port to listen on; defaults to `5001` |
-| `NODE_ENV` | API | Recommended | Set to `production` when deployed |
-| `UPLOAD_DIR` | API | No | Persistent avatar upload directory |
-| `VITE_API_URL` | Frontend build | For separate services | API base URL ending in `/api` |
-
-Never commit `.env` files or put server secrets in `VITE_*` variables. Vite
-variables are exposed in the browser bundle.
-
-## Messaging
-
-Messages are stored in MongoDB. Users can start a conversation from a public
-profile or job detail page. Each conversation is between two users, and the
-inbox refreshes every five seconds. Routes under `/api/messages` require a
-bearer token.
+Users can start a conversation from a public profile or job page. Message history is stored in MongoDB and delivered over authenticated WebSockets. REST endpoints under `/api/messages` create conversations and load history.

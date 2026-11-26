@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useApi } from "../context/ApiContext";
 import { useAuth } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
+import { io } from "socket.io-client";
 
 const idOf = (value) => String(value?._id || value?.id || value || "");
 const errorText = (error, fallback) => {
@@ -12,7 +13,7 @@ const errorText = (error, fallback) => {
 
 export default function MessagesPage() {
   const api = useApi();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedRecipient = searchParams.get("with");
   const [conversations, setConversations] = useState([]);
@@ -21,8 +22,11 @@ export default function MessagesPage() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
+  const socketRef = useRef(null);
+  const activeIdRef = useRef(activeId);
   const activeConversation = useMemo(() => conversations.find((item) => idOf(item) === activeId), [conversations, activeId]);
   const otherUser = activeConversation?.participants?.find((person) => idOf(person) !== idOf(user));
 
@@ -32,6 +36,32 @@ export default function MessagesPage() {
     setConversations(items);
     return items;
   }, [api]);
+
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5001/api" : "/api");
+    const socketOrigin = apiUrl.startsWith("/") ? window.location.origin : apiUrl.replace(/\/api\/?$/, "");
+    const socket = io(socketOrigin, { auth: { token }, transports: ["websocket"] });
+    socketRef.current = socket;
+    socket.on("connect", () => setSocketConnected(true));
+    socket.on("disconnect", () => setSocketConnected(false));
+    socket.on("connect_error", (err) => {
+      setSocketConnected(false);
+      setError(err.message || "Live chat connection failed.");
+    });
+    socket.on("message:new", (message) => {
+      if (idOf(message.conversation) !== activeIdRef.current) return;
+      setMessages((current) => current.some((item) => idOf(item) === idOf(message)) ? current : [...current, message]);
+    });
+    socket.on("conversation:updated", () => { refreshConversations().catch(() => {}); });
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      setSocketConnected(false);
+    };
+  }, [token, refreshConversations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +100,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!activeId) { setMessages([]); return undefined; }
     let cancelled = false;
+    setMessages([]);
     const loadMessages = async () => {
       try {
         const { data } = await api.getMessages(activeId);
@@ -79,29 +110,48 @@ export default function MessagesPage() {
       }
     };
     loadMessages();
-    const timer = window.setInterval(() => {
-      loadMessages();
-      refreshConversations().catch(() => {});
-    }, 5000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [api, activeId, refreshConversations]);
+    return () => { cancelled = true; };
+  }, [api, activeId]);
+
+  useEffect(() => {
+    if (!activeId || !socketConnected) return;
+    socketRef.current?.emit("conversation:join", { conversationId: activeId }, (result) => {
+      if (result?.error) setError(result.error);
+      else if (result?.messages) setMessages((current) => {
+        const merged = new Map(result.messages.map((message) => [idOf(message), message]));
+        current.forEach((message) => merged.set(idOf(message), message));
+        return [...merged.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+    });
+  }, [activeId, socketConnected]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const send = async (event) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !activeId || sending) return;
+    if (!content || !activeId || sending || !socketRef.current?.connected) return;
     setSending(true);
     setError("");
     try {
-      const { data } = await api.sendMessage(activeId, content);
-      setMessages((current) => [...current, data.message]);
-      setDraft("");
-      await refreshConversations();
+      socketRef.current.timeout(10000).emit("message:send", { conversationId: activeId, content }, (timeoutError, result) => {
+        if (timeoutError) {
+          setError("Message delivery timed out. Check your connection and try again.");
+          setSending(false);
+          return;
+        }
+        if (result?.error) {
+          setError(result.error);
+          setSending(false);
+          return;
+        }
+        const message = result?.message;
+        if (message) setMessages((current) => current.some((item) => idOf(item) === idOf(message)) ? current : [...current, message]);
+        setDraft("");
+        setSending(false);
+      });
     } catch (err) {
       setError(errorText(err, "Message could not be sent."));
-    } finally {
       setSending(false);
     }
   };
@@ -133,7 +183,7 @@ export default function MessagesPage() {
           </aside>
           <div className="flex min-h-[480px] flex-col">
             {activeConversation ? <>
-              <div className="border-b border-white/10 px-5 py-4"><div className="font-semibold text-white">{otherUser?.name || "Conversation"}</div><div className="text-xs capitalize text-slate-400">{otherUser?.role || "Nexora member"}</div></div>
+              <div className="border-b border-white/10 px-5 py-4"><div className="font-semibold text-white">{otherUser?.name || "Conversation"}</div><div className="text-xs capitalize text-slate-400">{otherUser?.role || "Nexora member"} · {socketConnected ? "Live" : "Connecting to live chat…"}</div></div>
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-6">
                 {messages.length === 0 && <p className="py-12 text-center text-sm text-slate-400">This conversation is ready. Send the first message.</p>}
                 {messages.map((message) => {
@@ -145,7 +195,7 @@ export default function MessagesPage() {
               <form onSubmit={send} className="flex gap-3 border-t border-white/10 p-4 sm:p-5">
                 <label className="sr-only" htmlFor="message-composer">Write a message</label>
                 <input id="message-composer" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={4000} placeholder="Write a message…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-400" />
-                <button disabled={!draft.trim() || sending} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
+                <button disabled={!draft.trim() || sending || !socketConnected} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{sending ? "Sending…" : socketConnected ? "Send" : "Connecting…"}</button>
               </form>
             </> : <div className="flex flex-1 items-center justify-center px-6 text-center text-slate-400">{loading ? "Loading your inbox…" : "Choose a conversation to read and reply."}</div>}
           </div>

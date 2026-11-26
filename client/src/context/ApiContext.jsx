@@ -21,7 +21,7 @@ const ApiContext = createContext();
 
 export const ApiProvider = ({ children }) => {
   const apiClient = axios.create({
-    baseURL: (import.meta.env.VITE_API_URL || "http://localhost:5001/api").replace(/\/$/, ""),
+    baseURL: (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5001/api" : "/api")).replace(/\/$/, ""),
     headers: {
       "Content-Type": "application/json",
     },

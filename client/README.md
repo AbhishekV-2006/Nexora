@@ -1,12 +1,12 @@
 # Nexora Client
 
-React 18 and Vite frontend for Nexora. For local setup, production deployment, and the complete environment-variable list, see the [project README](../README.md).
+React 18/Vite frontend. The production build is served by the Express API from the same Render web service. See the [project README](../README.md) for one-service deployment and environment setup.
 
 ## Commands
 
-- `npm ci` installs the locked dependencies.
-- `npm run dev` starts the local client at `http://localhost:5173`.
-- `npm run build` creates the production site in `dist/`.
-- `npm run preview` serves the production build locally.
+- `npm ci` installs the locked client dependencies.
+- `npm run dev` starts Vite at `http://localhost:5173` and proxies `/api` to port `5001`.
+- `npm run build` creates the production SPA in `dist/`.
+- `npm run preview` previews the production build locally.
 
-Set `VITE_API_URL` to the backend API base URL, including `/api`. The local default is `http://localhost:5001/api`. Configure your static host to rewrite application routes to `index.html`.
+`VITE_API_URL` is optional. Leave it unset for same-origin `/api`; set the full API URL ending in `/api` only when deploying the API separately.
